@@ -14,7 +14,7 @@ node a new ISO is generated with the configuration embedded.
 ```bash
 just controller-1 # equivalent to just node-iso "controller-1" "/dev/sda" "server"
 ```
-_*NOTE*_: Behind the scenes `just node-iso` is used which takes a hostname, install device and K3s role (`"server" || "agent"`).
+_**NOTE**_: Behind the scenes `just node-iso` is used which takes a `hostname`, `device` (to install on) and K3s role (`"server" || "agent"`).
 
 Let's find the USB-stick and unmount if mounted:
 ```bash
@@ -33,7 +33,8 @@ Change the boot order of the mini-PCs to boot from USB first and make sure neith
 (We will install to SSD but reinstall is required for config changes.)
 
 Start with the controller-node before continuing to the worker.
-*After the controller is installed, make sure to update `k3s_server_ip` in [`justfile`](./justfile)!*
+
+**After the controller is installed, make sure to update `k3s_server_ip` in [`justfile`](./justfile)!**
 
 CoreOS will be installed with the embedded config automatically. Make sure to remove the USB after install to boot into the new installation.
 
