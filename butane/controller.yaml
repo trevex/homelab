@@ -8,3 +8,136 @@ passwd:
 %{ for key in ssh_authorized_keys ~}
         - ${key}
 %{ endfor ~}
+
+# The following code was created by following this great blog-post: https://devnonsense.com/posts/k3s-on-fedora-coreos-bare-metal/
+
+storage:
+  disks:
+    - device: /dev/disk/by-id/coreos-boot-disk
+      wipe_table: false
+      partitions:
+      - number: 4
+        label: root
+        size_mib: 8192
+        resize: true
+      - label: var  # not specifying "number", so this will go after the root partition
+        size_mib: 0 # means "use the rest of the space on the disk"
+  filesystems:
+    - path: /var
+      device: /dev/disk/by-partlabel/var
+      format: xfs
+      wipe_filesystem: false # preserve /var on reinstall (this is the default, but be explicit)
+      with_mount_unit: true  # mount this filesystem in the real root
+  files:
+    - path: /etc/hostname
+      mode: 0644
+      contents:
+        inline:
+          ${hostname}
+    - path: /etc/yum.repos.d/kubernetes.repo
+      mode: 0644
+      contents:
+        inline: |
+          [kubernetes]
+          name=Kubernetes
+          baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+    - path: /etc/yum.repos.d/rancher-k3s-common.repo
+      mode: 0644
+      contents:
+        inline: |
+          [rancher-k3s-common-stable]
+          name=Rancher K3s Common (stable)
+          baseurl=https://rpm.rancher.io/k3s/stable/common/centos/8/noarch
+          enabled=1
+          gpgcheck=1
+          repo_gpgcheck=0
+          gpgkey=https://rpm.rancher.io/public.key
+    - path: /usr/local/bin/k3s
+      overwrite: true
+      mode: 0755
+      contents:
+        source: "https://github.com/k3s-io/k3s/releases/download/v1.29.1%2Bk3s2/k3s"
+        verification:
+          hash: "sha256-61eff558f5273d1b18059b978545c099c2fb7ff5b2074dee09f5989dad41fcb8"
+    - path: /etc/rancher/k3s/kubelet.config
+      mode: 0644
+      contents:
+        inline: |
+          apiVersion: kubelet.config.k8s.io/v1beta1
+          kind: KubeletConfiguration
+          shutdownGracePeriod: 60s
+          shutdownGracePeriodCriticalPods: 10s
+
+systemd:
+  units:
+    - name: "rpm-ostree-install-k3s-dependencies.service"
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install k3s dependencies
+        Wants=network-online.target
+        After=network-online.target
+        Before=zincati.service
+        ConditionPathExists=|!/usr/bin/kubectl
+        ConditionPathExists=|!/usr/share/selinux/packages/k3s.pp
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=rpm-ostree install --apply-live --allow-inactive --assumeyes kubectl k3s-selinux
+
+        [Install]
+        WantedBy=multi-user.target
+    - name: "k3s.service"
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Run K3s
+        Wants=network-online.target
+        After=network-online.target
+
+        [Service]
+        Type=notify
+        EnvironmentFile=-/etc/default/%N
+        EnvironmentFile=-/etc/sysconfig/%N
+        EnvironmentFile=-/etc/systemd/system/%N.env
+        KillMode=process
+        Delegate=yes
+        LimitNOFILE=1048576
+        LimitNPROC=infinity
+        LimitCORE=infinity
+        TasksMax=infinity
+        TimeoutStartSec=0
+        Restart=always
+        RestartSec=5s
+        ExecStartPre=-/sbin/modprobe br_netfilter
+        ExecStartPre=-/sbin/modprobe overlay
+        ExecStart=/usr/local/bin/k3s server --kubelet-arg="config=/etc/rancher/k3s/kubelet.config"
+
+        [Install]
+        WantedBy=multi-user.target
+
+    # Node shutdown leaves pods with status.phase=Failed and status.reason=Shutdown,
+    # so delete them automatically on startup.
+    # This may delete some pods that failed for other reasons, but --field-selector doesn't
+    # currently support status.reason, so it's the best we can do.
+    - name: "k3s-cleanup-shutdown-pods.service"
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Cleanup pods terminated by node shutdown
+        Wants=k3s.service
+
+        [Service]
+        Type=oneshot
+        Environment=KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        ExecStart=kubectl delete pods --field-selector status.phase=Failed -A --ignore-not-found=true
+        Restart=on-failure
+        RestartSec=30
+
+        [Install]
+        WantedBy=multi-user.target
+

@@ -66,6 +66,6 @@ matchbox_data := `pwd` / ".matchbox/lib"
 
 matchbox:
     mkdir -p {{matchbox_data}}/{profiles,groups,ignition,cloud,generic,assets}
-    docker run --net=host --rm -v {{matchbox_data}}:/var/lib/matchbox:Z -v {{matchbox_tls}}:/etc/matchbox:Z quay.io/poseidon/matchbox:latest -address=0.0.0.0:8080 -rpc-address=0.0.0.0:8081 -log-level=debug
+    docker run -p 8080:8080 -p 8081:8081 --rm -v {{matchbox_data}}:/var/lib/matchbox:Z -v {{matchbox_tls}}:/etc/matchbox:Z quay.io/poseidon/matchbox:latest -address=0.0.0.0:8080 -rpc-address=0.0.0.0:8081 -log-level=debug
 
 

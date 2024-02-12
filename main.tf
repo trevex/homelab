@@ -1,7 +1,11 @@
 variable "controllers" {
   type = map(object({
-    mac  = string
+    ip  = string
   }))
+  validation {
+    condition     = length(var.controllers) == 1
+    error_message = "Current setup supports only exacly 1 master!"
+  }
 }
 
 variable "ssh_authorized_keys" {
@@ -35,6 +39,7 @@ data "ct_config" "controllers" {
 
   content = templatefile("${path.module}/butane/controller.yaml", {
     ssh_authorized_keys = var.ssh_authorized_keys
+    hostname = each.key
   })
   strict   = true
 }
@@ -58,7 +63,7 @@ resource "matchbox_group" "controllers" {
   profile = matchbox_profile.controllers[each.key].name
 
   selector = {
-    mac = each.value.mac
+    name = each.key
   }
 }
 

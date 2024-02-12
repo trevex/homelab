@@ -1,6 +1,6 @@
 controllers = {
   "controller-1" = {
-    mac = "c1"
+    ip = "192.168.1.119"
   }
 }
 ssh_authorized_keys = [
