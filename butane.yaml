@@ -5,9 +5,7 @@ passwd:
     - name: core
       groups: ["wheel", "sudo"]
       ssh_authorized_keys:
-%{ for key in ssh_authorized_keys ~}
-        - ${key}
-%{ endfor ~}
+        - ${SSH_AUTHORIZED_KEY}
 
 # The following code was created by following this great blog-post: https://devnonsense.com/posts/k3s-on-fedora-coreos-bare-metal/
 
@@ -33,7 +31,7 @@ storage:
       mode: 0644
       contents:
         inline:
-          ${hostname}
+          ${HOSTNAME}
     - path: /etc/yum.repos.d/kubernetes.repo
       mode: 0644
       contents:
@@ -115,7 +113,7 @@ systemd:
         RestartSec=5s
         ExecStartPre=-/sbin/modprobe br_netfilter
         ExecStartPre=-/sbin/modprobe overlay
-        ExecStart=/usr/local/bin/k3s server --kubelet-arg="config=/etc/rancher/k3s/kubelet.config"
+        ExecStart=/usr/local/bin/k3s ${K3S_ROLE} --kubelet-arg="config=/etc/rancher/k3s/kubelet.config" --token=${K3S_TOKEN}
 
         [Install]
         WantedBy=multi-user.target

@@ -1,7 +1,2 @@
 /.direnv/
-/fedora-coreos-*.iso
-/fedora-coreos-*.iso.sig
-/.matchbox/
-/.terraform/
-/terraform.tfstate
-/terraform.tfstate.backup
+/.build/

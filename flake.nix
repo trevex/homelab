@@ -25,9 +25,8 @@
           buildInputs = with pkgs; [
             just
             findutils
-            podman
-            openssl
-            opentofu
+            gettext
+            butane
           ];
         };
       }

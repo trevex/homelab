@@ -1,71 +1,52 @@
-ip := ```
-ip -4 addr show $(ip -br l | awk '$1 !~ "lo|vir|wl|docker" { print $1}') | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
-```
+build-dir:
+    mkdir -p .build
 
-get-ip:
-    @echo {{ip}}
-
-# required by script
-export SAN := "DNS.1:localhost,IP.1:127.0.0.1,IP.2:" + ip
-
-gen-certs:
+coreos-iso: build-dir
     #!/usr/bin/env bash
     set -euxo pipefail
 
-    mkdir -p .matchbox/tls/
-    cp openssl.conf .matchbox/tls/
-    cd .matchbox/tls/
+    cd .build
 
-    echo $SAN
+    if [ -f fcos.iso ]; then
+        echo "'fcos.iso' already exist, skipping download (if you want to update run 'just clean' to fetch newest image on next run"
+        exit -1
+    fi
 
-    # Copied from https://github.com/poseidon/matchbox/blob/main/scripts/tls/cert-gen
-    # Licensed under Apache-2.0
-
-    rm -f ca.key ca.crt server.key server.csr server.crt client.key client.csr client.crt index.* serial*
-    rm -rf certs crl newcerts
-
-    echo "Creating example CA, server cert/key, and client cert/key..."
-
-    # basic files/directories
-    mkdir -p {certs,crl,newcerts}
-    touch index.txt
-    touch index.txt.attr
-    echo 1000 > serial
-
-    # CA private key (unencrypted)
-    openssl genrsa -out ca.key 4096
-    # Certificate Authority (self-signed certificate)
-    openssl req -config openssl.conf -new -x509 -days 3650 -sha256 -key ca.key -extensions v3_ca -out ca.crt -subj "/CN=fake-ca"
-
-    # End-entity certificates
-
-    # Server private key (unencrypted)
-    openssl genrsa -out server.key 2048
-    # Server certificate signing request (CSR)
-    openssl req -config openssl.conf -new -sha256 -key server.key -out server.csr -subj "/CN=fake-server"
-    # Certificate Authority signs CSR to grant a certificate
-    openssl ca -batch -config openssl.conf -extensions server_cert -days 365 -notext -md sha256 -in server.csr -out server.crt -cert ca.crt -keyfile ca.key
-
-    # Client private key (unencrypted)
-    openssl genrsa -out client.key 2048
-    # Signed client certificate signing request (CSR)
-    openssl req -config openssl.conf -new -sha256 -key client.key -out client.csr -subj "/CN=fake-client"
-    # Certificate Authority signs CSR to grant a certificate
-    openssl ca -batch -config openssl.conf -extensions usr_cert -days 365 -notext -md sha256 -in client.csr -out client.crt -cert ca.crt -keyfile ca.key
-
-    # Remove CSR's
-    rm *.csr
-
-    echo "*******************************************************************"
-    echo "WARNING: Generated credentials are self-signed. Prefer your"
-    echo "organization's PKI for production deployments."
+    docker run --pull=always --rm -v .:/data -w /data \
+        quay.io/coreos/coreos-installer:release download -s stable -p metal -f iso --decompress | tee last-iso.txt
+    mv "$(cat last-iso.txt)" "fcos.iso"
 
 
-matchbox_tls := `pwd` / ".matchbox/tls"
-matchbox_data := `pwd` / ".matchbox/lib"
+node-iso $hostname $disk $k3s_role: coreos-iso
+    #!/usr/bin/env bash
+    set -euxo pipefail
 
-matchbox:
-    mkdir -p {{matchbox_data}}/{profiles,groups,ignition,cloud,generic,assets}
-    docker run -p 8080:8080 -p 8081:8081 --rm -v {{matchbox_data}}:/var/lib/matchbox:Z -v {{matchbox_tls}}:/etc/matchbox:Z quay.io/poseidon/matchbox:latest -address=0.0.0.0:8080 -rpc-address=0.0.0.0:8081 -log-level=debug
+    cd .build
 
+    export HOSTNAME=${hostname}
+    export K3S_ROLE=${k3s_role}
+    export K3S_TOKEN="changethistoanythingbutthis"
+    export SSH_AUTHORIZED_KEY=$(ssh-agent sh -c 'ssh-add -q; ssh-add -L' | head -n 1)
+
+    envsubst < ../butane.yaml > "${hostname}.yaml"
+
+    butane --pretty --strict "${hostname}.yaml" --output "${hostname}.ign"
+
+    docker run --pull=always --rm -v .:/data -w /data \
+        quay.io/coreos/coreos-installer:release iso customize \
+        --dest-ignition "/data/${hostname}.ign" \
+        --dest-device "${disk}" \
+        -o "/data/${hostname}.iso" \
+        /data/fcos.iso
+
+
+controller-1: (node-iso "controller-1" "/dev/sda" "server")
+
+[confirm]
+dd hostname device: build-dir
+    sudo dd if=.build/{{hostname}}.iso of={{device}} bs=1M status=progress
+
+[confirm]
+clean:
+    rm -rf .build
 
