@@ -1,3 +1,5 @@
+export k3s_server_ip := "https://192.168.1.121:6443"
+
 build-dir:
     mkdir -p .build
 
@@ -27,6 +29,11 @@ node-iso $hostname $disk $k3s_role: coreos-iso
     export K3S_ROLE=${k3s_role}
     export K3S_TOKEN="changethistoanythingbutthis"
     export SSH_AUTHORIZED_KEY=$(ssh-agent sh -c 'ssh-add -q; ssh-add -L' | head -n 1)
+    export K3S_EXTRA_FLAGS=""
+
+    if [ $K3S_ROLE == "agent" ]; then
+        export K3S_EXTRA_FLAGS="-server ${k3s_server_ip}"
+    fi
 
     envsubst < ../butane.yaml > "${hostname}.yaml"
 
@@ -41,6 +48,9 @@ node-iso $hostname $disk $k3s_role: coreos-iso
 
 
 controller-1: (node-iso "controller-1" "/dev/sda" "server")
+
+kubeconfig:
+    ssh core@$(echo "${k3s_server_ip}" | awk -F'https://|:[0-9]+' '$0=$2') echo "hi"
 
 [confirm]
 dd hostname device: build-dir

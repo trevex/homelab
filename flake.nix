@@ -27,6 +27,7 @@
             findutils
             gettext
             butane
+            awk
           ];
         };
       }

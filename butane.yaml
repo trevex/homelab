@@ -113,7 +113,7 @@ systemd:
         RestartSec=5s
         ExecStartPre=-/sbin/modprobe br_netfilter
         ExecStartPre=-/sbin/modprobe overlay
-        ExecStart=/usr/local/bin/k3s ${K3S_ROLE} --kubelet-arg="config=/etc/rancher/k3s/kubelet.config" --token=${K3S_TOKEN}
+        ExecStart=/usr/local/bin/k3s ${K3S_ROLE} --kubelet-arg="config=/etc/rancher/k3s/kubelet.config" --token=${K3S_TOKEN} ${K3S_EXTRA_FLAGS}
 
         [Install]
         WantedBy=multi-user.target
