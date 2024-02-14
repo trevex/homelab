@@ -95,17 +95,17 @@ data:
     hostname route-reflector
     line vty
     log file /etc/frr/frr.log informational
-
+    !
+    ip nht resolve-via-default
+    !
     router bgp 65000
-      bgp router-id 192.168.1.121-rr
-      bgp cluster-id 192.168.1.121
+      bgp cluster-id 10.43.43.43
       bgp log-neighbor-changes
       no bgp default ipv4-unicast
+      neighbor fabric version 4+
       neighbor fabric peer-group
       neighbor fabric remote-as 65000
-      neighbor fabric capability extended-nexthop
-      neighbor fabric update-source 192.168.1.121
-      bgp listen range 192.168.1.1/24 peer-group fabric
+      bgp listen range 0.0.0.0/0 peer-group fabric
       !
       address-family l2vpn evpn
        neighbor fabric activate
@@ -114,10 +114,32 @@ data:
       !
     !
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: route-reflector
+  name: route-reflector
+  namespace: kube-system
+spec:
+  clusterIP: 10.43.43.43
+  ports:
+  - name: bgp
+    port: 179
+    protocol: TCP
+    targetPort: 179
+  - name: monitoring
+    port: 7573
+    protocol: TCP
+    targetPort: 7573
+  selector:
+    app.kubernetes.io/name: route-reflector
+  type: ClusterIP
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: route-reflector-controller-1
+  name: route-reflector
   namespace: kube-system
   labels:
     app.kubernetes.io/name: route-reflector
@@ -167,28 +189,29 @@ spec:
               attempts=$(( $attempts + 1 ))
             done
             tail -f /etc/frr/frr.log
+        ports:
+          - containerPort: 179
+            name: bgp
         livenessProbe:
           httpGet:
             path: /livez
-            port: 7574
-            host: 127.0.0.1
+            port: 7573
           periodSeconds: 5
           failureThreshold: 3
         startupProbe:
           httpGet:
             path: /livez
-            port: 7574
-            host: 127.0.0.1
+            port: 7573
           failureThreshold: 30
           periodSeconds: 5
       - name: frr-metrics
         image: quay.io/frrouting/frr:8.4.2
         command: ["/etc/frr_metrics/frr-metrics"]
         args:
-          - --metrics-port=7574
+          - --metrics-port=7573
           - --metrics-bind-address=0.0.0.0
         ports:
-          - containerPort: 7574
+          - containerPort: 7573
             name: monitoring
         volumeMounts:
           - name: frr-sockets
@@ -229,5 +252,4 @@ spec:
         - name: metrics
           emptyDir: {}
       terminationGracePeriodSeconds: 10
-      shareProcessNamespace: true
-      hostNetwork: true
+
