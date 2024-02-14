@@ -5,6 +5,7 @@ Currently 3 mini-PCs with N100 16GB RAM and 512GB SSD running K3s on FCOS.
 ## Prerequisites
 
 An environment with `docker`, `direnv`, `nix` and `nix-direnv` available.
+Make sure to update the `justfile`-recipes for your environment.
 
 ## Generate node-specific ISOs
 
@@ -49,4 +50,30 @@ On the node you can change to the root and test `kubectl`:
 ```bash
 sudo -i
 KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get po --all-namespaces
+```
+
+## Connect to the K3s
+
+Retrieve and patch the kubeconfig from the controller:
+```bash
+just kubeconfig
+```
+
+You can then either invoke kubectl via:
+```bash
+just k get po --all-namespaces
+```
+
+Or alternatively simply export `KUBECONFIG` pointing to the config and using `kubectl` and related tool:
+```bash
+export KUBECONFIG=.build/kubeconfig
+kubectl get po --all-namespaces
+```
+
+## Install cluster components
+
+We want a route-reflector and a daemonset of VTEPs, as well as Multus and custom CNI components to be installed.
+With the kubeconfig available, run:
+```bash
+just install
 ```

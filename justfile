@@ -49,9 +49,6 @@ node-iso $hostname $disk $k3s_role: coreos-iso
 
 controller-1: (node-iso "controller-1" "/dev/sda" "server")
 
-kubeconfig:
-    ssh core@$(echo "${k3s_server_ip}" | awk -F'https://|:[0-9]+' '$0=$2') echo "hi"
-
 [confirm]
 dd hostname device: build-dir
     sudo dd if=.build/{{hostname}}.iso of={{device}} bs=1M status=progress
@@ -60,3 +57,11 @@ dd hostname device: build-dir
 clean:
     rm -rf .build
 
+kubeconfig:
+    ssh core@$(echo "${k3s_server_ip}" | awk -F'https://|:[0-9]+' '$0=$2') sudo cat /etc/rancher/k3s/k3s.yaml > .build/kubeconfig.raw
+    sed "s/https:\/\/127\.0\.0\.1:6443/$(echo $k3s_server_ip | sed 's/\//\\\//g')/g" .build/kubeconfig.raw > .build/kubeconfig
+
+k *args:
+    KUBECONFIG=`pwd`/.build/kubeconfig kubectl {{args}}
+
+install: (k "apply -k bgp-evpn")

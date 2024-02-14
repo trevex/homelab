@@ -27,7 +27,9 @@
             findutils
             gettext
             butane
-            awk
+            gawk
+            gnused
+            kubectl
           ];
         };
       }

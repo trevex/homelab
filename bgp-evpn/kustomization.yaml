@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kube-system
+
+# NOTE: This setup does not utilize the validating webhook as we do not setup cert-manager.
+#       For production environments this should be adapted!
+resources:
+  # - github.com/metallb/frr-k8s/config/crd?ref=v0.0.8
+  # - github.com/metallb/frr-k8s/config/frr-k8s?ref=v0.0.8
+  # - github.com/metallb/frr-k8s/config/rbac?ref=v0.0.8
+  - route-reflector.yaml
+  # - vtep-config.yaml
+  - vtep.yaml
+
+# patches:
+#   - path: delete-namespace.yaml
+
+images:
+- name: controller
+  newName: quay.io/metallb/frr-k8s
+  newTag: v0.0.8
+- name: quay.io/metallb/frr-k8s
+  newTag: v0.0.8
