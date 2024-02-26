@@ -11,13 +11,11 @@ coreos-iso: build-dir
 
     if [ -f fcos.iso ]; then
         echo "'fcos.iso' already exist, skipping download (if you want to update run 'just clean' to fetch newest image on next run"
-        exit -1
+    else
+        docker run --pull=always --rm -v .:/data -w /data \
+            quay.io/coreos/coreos-installer:release download -s stable -p metal -f iso --decompress | tee last-iso.txt
+        mv "$(cat last-iso.txt)" "fcos.iso"
     fi
-
-    docker run --pull=always --rm -v .:/data -w /data \
-        quay.io/coreos/coreos-installer:release download -s stable -p metal -f iso --decompress | tee last-iso.txt
-    mv "$(cat last-iso.txt)" "fcos.iso"
-
 
 node-iso $hostname $disk $k3s_role: coreos-iso
     #!/usr/bin/env bash
@@ -39,7 +37,7 @@ node-iso $hostname $disk $k3s_role: coreos-iso
 
     butane --pretty --strict "${hostname}.yaml" --output "${hostname}.ign"
 
-    docker run --pull=always --rm -v .:/data -w /data \
+    docker run --rm -v .:/data -w /data \
         quay.io/coreos/coreos-installer:release iso customize \
         --dest-ignition "/data/${hostname}.ign" \
         --dest-device "${disk}" \
@@ -48,6 +46,10 @@ node-iso $hostname $disk $k3s_role: coreos-iso
 
 
 controller-1: (node-iso "controller-1" "/dev/sda" "server")
+
+compute-1: (node-iso "compute-1" "/dev/sda" "agent")
+
+compute-2: (node-iso "compute-2" "/dev/sda" "agent")
 
 [confirm]
 dd hostname device: build-dir
@@ -65,3 +67,16 @@ k *args:
     KUBECONFIG=`pwd`/.build/kubeconfig kubectl {{args}}
 
 install: (k "apply -k bgp-evpn")
+
+uninstall: (k "delete -k bgp-evpn")
+
+vtysh $hostname:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    export KUBECONFIG=`pwd`/.build/kubeconfig
+
+    pod_name=$(kubectl  get pods --all-namespaces --template "{{{{range .items}}{{{{if eq .spec.nodeName \"${hostname}\"}}{{{{.metadata.name}}{{{{\"\n\"}}{{{{end}}{{{{end}}" | grep "route-reflector\|vtep")
+    echo "Found $pod_name on $hostname."
+
+    kubectl  -n kube-system exec -it "$pod_name" -- vtysh

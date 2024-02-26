@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: route-reflector
+  name: route-reflector-1
   namespace: kube-system
 data:
   daemons: |
@@ -99,7 +99,8 @@ data:
     ip nht resolve-via-default
     !
     router bgp 65000
-      bgp cluster-id 10.43.43.43
+      bgp router-id 192.168.1.121
+      bgp cluster-id 192.168.1.121
       bgp log-neighbor-changes
       no bgp default ipv4-unicast
       neighbor fabric version 4+
@@ -114,32 +115,10 @@ data:
       !
     !
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app.kubernetes.io/name: route-reflector
-  name: route-reflector
-  namespace: kube-system
-spec:
-  clusterIP: 10.43.43.43
-  ports:
-  - name: bgp
-    port: 179
-    protocol: TCP
-    targetPort: 179
-  - name: monitoring
-    port: 7573
-    protocol: TCP
-    targetPort: 7573
-  selector:
-    app.kubernetes.io/name: route-reflector
-  type: ClusterIP
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: route-reflector
+  name: route-reflector-1
   namespace: kube-system
   labels:
     app.kubernetes.io/name: route-reflector
@@ -189,19 +168,18 @@ spec:
               attempts=$(( $attempts + 1 ))
             done
             tail -f /etc/frr/frr.log
-        ports:
-          - containerPort: 179
-            name: bgp
         livenessProbe:
           httpGet:
             path: /livez
             port: 7573
+            host: 127.0.0.1
           periodSeconds: 5
           failureThreshold: 3
         startupProbe:
           httpGet:
             path: /livez
             port: 7573
+            host: 127.0.0.1
           failureThreshold: 30
           periodSeconds: 5
       - name: frr-metrics
@@ -244,7 +222,7 @@ spec:
           emptyDir: {}
         - name: frr-startup
           configMap:
-            name: route-reflector
+            name: route-reflector-1
         - name: frr-conf
           emptyDir: {}
         - name: reloader
@@ -252,4 +230,6 @@ spec:
         - name: metrics
           emptyDir: {}
       terminationGracePeriodSeconds: 10
+      shareProcessNamespace: true
+      hostNetwork: true
 
