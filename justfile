@@ -33,7 +33,7 @@ node-iso $hostname $disk $k3s_role: coreos-iso
         export K3S_EXTRA_FLAGS="-server ${k3s_server_ip}"
     fi
 
-    envsubst < ../fcos/butane.yaml > "${hostname}.yaml"
+    envsubst < ../fcos-k3s/butane.yaml > "${hostname}.yaml"
 
     butane --pretty --strict "${hostname}.yaml" --output "${hostname}.ign"
 

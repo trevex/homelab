@@ -30,6 +30,7 @@
             gawk
             gnused
             kubectl
+            go
           ];
         };
       }
