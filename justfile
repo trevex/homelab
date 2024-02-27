@@ -94,3 +94,58 @@ ssh hostname *args:
     echo "Found IP ${node_ip} for node {{hostname}}."
 
     ssh core@"${node_ip}" {{args}}
+
+vxlan-test-setup-node hostname dev cidr:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    just ssh {{hostname}} <<EOF
+    sudo ip link add vxlan200 type vxlan \
+        id 200 \
+        dstport 4789 \
+        local $(just get-ip {{hostname}}) \
+        nolearning
+    sudo ip link add br200 type bridge
+    sudo ip link set vxlan200 master br200
+    sudo ip link set br200 type bridge stp_state 0
+    sudo ip link set up dev br200
+    sudo ip link set up dev vxlan200
+
+    sudo ip link add dev {{dev}}s type veth peer name {{dev}}
+    sudo ip link set dev {{dev}}s up
+    sudo ip addr add {{cidr}} dev {{dev}}
+    sudo ip link set dev {{dev}} up
+    sudo ip link set {{dev}}s master br200
+    EOF
+
+vxlan-test-setup: (vxlan-test-setup-node "compute-1" "vm1" "172.16.16.2/24") (vxlan-test-setup-node "compute-2" "vm2" "172.16.16.3/24")
+
+vxlan-test:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    echo "Ping vm1 (compute-1) to vm2 (compute-2):"
+    just ssh compute-1 <<EOF
+    ping -I vm1 -c3 172.16.16.3
+    EOF
+
+    echo "Ping vm2 (compute-2) to vm1 (compute-1):"
+    just ssh compute-2 <<EOF
+    ping -I vm2 -c3 172.16.16.2
+    EOF
+
+vxlan-test-clean-node hostname dev:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    just ssh {{hostname}} <<EOF
+    sudo ip link set dev {{dev}} down
+    sudo ip link set dev {{dev}}s down
+    sudo ip link del dev {{dev}}s type veth peer name {{dev}}
+    sudo ip link set down dev vxlan200
+    sudo ip link set down dev br200
+    sudo ip link del br200 type bridge
+    sudo ip link del vxlan200 type vxlan
+    EOF
+
+vxlan-test-clean: (vxlan-test-clean-node "compute-1" "vm1") (vxlan-test-clean-node "compute-2" "vm2")
