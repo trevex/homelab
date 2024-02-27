@@ -33,7 +33,7 @@ node-iso $hostname $disk $k3s_role: coreos-iso
         export K3S_EXTRA_FLAGS="-server ${k3s_server_ip}"
     fi
 
-    envsubst < ../butane.yaml > "${hostname}.yaml"
+    envsubst < ../fcos/butane.yaml > "${hostname}.yaml"
 
     butane --pretty --strict "${hostname}.yaml" --output "${hostname}.ign"
 
@@ -64,19 +64,33 @@ kubeconfig:
     sed "s/https:\/\/127\.0\.0\.1:6443/$(echo $k3s_server_ip | sed 's/\//\\\//g')/g" .build/kubeconfig.raw > .build/kubeconfig
 
 k *args:
-    KUBECONFIG=`pwd`/.build/kubeconfig kubectl {{args}}
+    @KUBECONFIG=`pwd`/.build/kubeconfig kubectl {{args}}
 
 install: (k "apply -k bgp-evpn")
 
 uninstall: (k "delete -k bgp-evpn")
 
-vtysh $hostname:
+vtysh hostname *args:
     #!/usr/bin/env bash
     set -euxo pipefail
 
     export KUBECONFIG=`pwd`/.build/kubeconfig
 
-    pod_name=$(kubectl  get pods --all-namespaces --template "{{{{range .items}}{{{{if eq .spec.nodeName \"${hostname}\"}}{{{{.metadata.name}}{{{{\"\n\"}}{{{{end}}{{{{end}}" | grep "route-reflector\|vtep")
-    echo "Found $pod_name on $hostname."
+    pod_name=$(kubectl get pods --all-namespaces --template "{{{{range .items}}{{{{if eq .spec.nodeName \"{{hostname}}\"}}{{{{.metadata.name}}{{{{\"\n\"}}{{{{end}}{{{{end}}" | grep "route-reflector\|vtep")
+    echo "Found ${pod_name} on {{hostname}}."
 
-    kubectl  -n kube-system exec -it "$pod_name" -- vtysh
+    kubectl  -n kube-system exec -it "${pod_name}" -- vtysh {{args}}
+
+get-ip hostname:
+    @just k get no {{hostname}} -o wide | tail -n1 | awk '{print $6}'
+
+ssh hostname *args:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    export KUBECONFIG=`pwd`/.build/kubeconfig
+
+    node_ip=$(just get-ip {{hostname}})
+    echo "Found IP ${node_ip} for node {{hostname}}."
+
+    ssh core@"${node_ip}" {{args}}
