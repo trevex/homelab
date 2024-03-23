@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: whereabouts
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      volumes:
+        - name: cnibin
+          hostPath:
+            path: /var/lib/rancher/k3s/data/current/bin
+        - name: cni-net-dir
+          hostPath:
+            path: /var/lib/rancher/k3s/agent/etc/cni/net.d

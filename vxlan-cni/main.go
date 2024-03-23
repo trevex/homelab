@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"syscall"
@@ -249,7 +250,7 @@ func resultForInterfaces(netns ns.NetNS, br *netlink.Bridge, hostIfName, contIfN
 	return &current.Result{
 		CNIVersion: current.ImplementedSpecVersion,
 		Interfaces: []*current.Interface{
-			&current.Interface{
+			{
 				Name: br.Attrs().Name,
 				Mac:  br.Attrs().HardwareAddr.String(),
 			},
@@ -359,11 +360,72 @@ func cmdAdd(args *skel.CmdArgs) error {
 	return types.PrintResult(result, n.CNIVersion)
 }
 
+func bridgeIfCount(brName string) (int, error) {
+	ifs, err := ioutil.ReadDir(fmt.Sprintf("/sys/class/net/%s/brif/", brName))
+	if err != nil {
+		return -1, err
+	}
+	return len(ifs), nil
+}
+
 func cmdDel(args *skel.CmdArgs) error {
-	return nil
+	n, err := loadNetConf(args.StdinData)
+	if err != nil {
+		return err
+	}
+
+	if args.Netns != "" {
+		err = ns.WithNetNSPath(args.Netns, func(_ ns.NetNS) error {
+			_, err := ip.DelLinkByNameAddr(args.IfName)
+			if err != nil && err == ip.ErrLinkNotFound {
+				return nil
+			}
+			return err
+		})
+		if err != nil {
+			// https://github.com/kubernetes/kubernetes/issues/43014#issuecomment-287164444
+			_, ok := err.(ns.NSPathNotExistErr)
+			if !ok { // ignore NSPathNotExistErr
+				return err
+			}
+		}
+	}
+
+	// We want to make sure only a single instance tampers with a particular
+	// VXLAN bridge and interface to avoid race-conditions.
+	l, err := LockVNI(n.VNI)
+	if err != nil {
+		return err
+	}
+	defer l.Unlock()
+
+	vxName := fmt.Sprintf("vxlan%d", n.VNI)
+	brName := fmt.Sprintf("bridge%d", n.VNI)
+	brIfCount, err := bridgeIfCount(brName)
+	if err != nil {
+		return err
+	}
+	if brIfCount <= 1 {
+		vx, _ := netlink.LinkByName(vxName)
+		if vx != nil { // If not already deletead
+			if err := netlink.LinkDel(vx); err != nil {
+				return err
+			}
+		}
+
+		br, _ := netlink.LinkByName(brName)
+		if br != nil { // If not already deletead
+			if err := netlink.LinkDel(br); err != nil {
+				return err
+			}
+		}
+	}
+
+	return ipam.ExecDel(n.IPAM.Type, args.StdinData)
 }
 
 func cmdCheck(args *skel.CmdArgs) error {
+	// TODO: implement
 	return nil
 }
 
