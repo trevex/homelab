@@ -66,9 +66,9 @@ kubeconfig:
 k *args:
     @KUBECONFIG=`pwd`/.build/kubeconfig kubectl {{args}}
 
-install: (k "apply -k bgp-evpn")
+install: (k "apply -k bgp-evpn") (k "apply -k multus-cni") (k "apply -k vxlan-cni")
 
-uninstall: (k "delete -k bgp-evpn")
+uninstall: (k "delete -k bgp-evpn") (k "delete -k multus-cni") (k "delete -k vxlan-cni")
 
 vtysh hostname *args:
     #!/usr/bin/env bash
@@ -94,6 +94,9 @@ ssh hostname *args:
     echo "Found IP ${node_ip} for node {{hostname}}."
 
     ssh core@"${node_ip}" {{args}}
+
+build-vxlan-cni:
+    docker build -t vxlan-cni ./vxlan-cni
 
 vxlan-test-setup-node hostname dev cidr:
     #!/usr/bin/env bash

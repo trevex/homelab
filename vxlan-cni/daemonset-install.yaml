@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vxlan
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vxlan
+  namespace: kube-system
+  labels:
+    tier: node
+    app: vxlan
+spec:
+  selector:
+    matchLabels:
+      app: vxlan
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        tier: node
+        app: vxlan
+    spec:
+      hostNetwork: true
+      serviceAccountName: vxlan
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: vxlan
+        image: ghcr.io/trevex/homelab:main
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: cnibin
+          mountPath: /host/opt/cni/bin
+      volumes:
+        - name: cnibin
+          hostPath:
+            path: /var/lib/rancher/k3s/data/current/bin
+
