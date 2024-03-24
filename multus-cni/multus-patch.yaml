@@ -13,4 +13,10 @@ spec:
         - name: cnibin
           hostPath:
             path: /var/lib/rancher/k3s/data/current/bin
+      # containers:
+      #   - name: kube-multus
+      #     image: ghcr.io/k8snetworkplumbingwg/multus-cni:v4.0.2
+      # initContainers:
+      #   - name: install-multus-binary
+      #     image: ghcr.io/k8snetworkplumbingwg/multus-cni:v4.0.2
 

@@ -1,0 +1,60 @@
+---
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: vxlan-a
+spec:
+  config: '{
+  "type": "vxlan",
+  "vni": 300,
+  "ipam": {
+    "type": "whereabouts",
+    "range": "17.16.32.0/24"
+  }
+}'
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vxlan-a
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/vxlan-a
+spec:
+  containers:
+  - name: test
+    image: centos/tools
+    imagePullPolicy: IfNotPresent
+    command:
+    - /sbin/init
+  nodeSelector:
+    kubernetes.io/hostname: compute-1
+---
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: vxlan-b
+spec:
+  config: '{
+  "type": "vxlan",
+  "vni": 300,
+  "ipam": {
+    "type": "whereabouts",
+    "range": "17.16.32.0/24"
+  }
+}'
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vxlan-b
+  annotations:
+    k8s.v1.cni.cncf.io/networks: default/vxlan-b
+spec:
+  containers:
+  - name: test
+    image: centos/tools
+    imagePullPolicy: IfNotPresent
+    command:
+    - /sbin/init
+  nodeSelector:
+    kubernetes.io/hostname: compute-2

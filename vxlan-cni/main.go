@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"syscall"
@@ -145,6 +144,7 @@ func ensureBridge(n *NetConf, brName string) (*netlink.Bridge, error) {
 
 	// We want to own the routes for this interface
 	_, _ = sysctl.Sysctl(fmt.Sprintf("net/ipv6/conf/%s/accept_ra", brName), "0")
+
 	// We disable Spanning Tree Protocol
 	if err := os.WriteFile(fmt.Sprintf("/sys/class/net/%s/bridge/stp_state", brName), []byte("0"), 0644); err != nil {
 		return nil, err
@@ -361,7 +361,8 @@ func cmdAdd(args *skel.CmdArgs) error {
 }
 
 func bridgeIfCount(brName string) (int, error) {
-	ifs, err := ioutil.ReadDir(fmt.Sprintf("/sys/class/net/%s/brif/", brName))
+	ifs, err := os.ReadDir(fmt.Sprintf("/sys/class/net/%s/brif", brName))
+
 	if err != nil {
 		return -1, err
 	}
