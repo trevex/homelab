@@ -1,4 +1,18 @@
 ---
+# apiVersion: "k8s.cni.cncf.io/v1"
+# kind: NetworkAttachmentDefinition
+# metadata:
+#   name: vxlan-a
+# spec:
+#   config: '{
+#   "type": "vxlan",
+#   "vni": 300,
+#   "ipam": {
+#     "type": "whereabouts",
+#     "range": "172.16.32.0/24"
+#   }
+# }'
+---
 apiVersion: "k8s.cni.cncf.io/v1"
 kind: NetworkAttachmentDefinition
 metadata:
@@ -7,10 +21,7 @@ spec:
   config: '{
   "type": "vxlan",
   "vni": 300,
-  "ipam": {
-    "type": "whereabouts",
-    "range": "172.16.32.0/24"
-  }
+  "addr": "172.16.32.1/24"
 }'
 ---
 apiVersion: v1
@@ -29,6 +40,20 @@ spec:
   nodeSelector:
     kubernetes.io/hostname: compute-1
 ---
+# apiVersion: "k8s.cni.cncf.io/v1"
+# kind: NetworkAttachmentDefinition
+# metadata:
+#   name: vxlan-b
+# spec:
+#   config: '{
+#   "type": "vxlan",
+#   "vni": 300,
+#   "ipam": {
+#     "type": "whereabouts",
+#     "range": "172.16.32.0/24"
+#   }
+# }'
+---
 apiVersion: "k8s.cni.cncf.io/v1"
 kind: NetworkAttachmentDefinition
 metadata:
@@ -37,10 +62,7 @@ spec:
   config: '{
   "type": "vxlan",
   "vni": 300,
-  "ipam": {
-    "type": "whereabouts",
-    "range": "172.16.32.0/24"
-  }
+  "addr": "172.16.32.2/24"
 }'
 ---
 apiVersion: v1

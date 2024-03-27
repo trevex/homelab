@@ -31,7 +31,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: vxlan
-        image: ghcr.io/trevex/homelab@sha256:e31c8757d011cf11e7b58211df037ed027db6abf30e3dc8ecf7edb7b7e206a7c
+        image: ghcr.io/trevex/homelab@sha256:ab35d97d60dedd628e1b7f2fe2564580389ad04ff4b653b28b3dbd2d9b883eb3
         securityContext:
           privileged: true
         volumeMounts:

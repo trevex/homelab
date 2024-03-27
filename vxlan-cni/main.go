@@ -258,6 +258,9 @@ func resultForInterfaces(netns ns.NetNS, br *netlink.Bridge, hostIfName, contIfN
 			hostIf,
 			contIf,
 		},
+		IPs:    []*current.IPConfig{},
+		Routes: []*types.Route{},
+		DNS:    types.DNS{},
 	}, nil
 }
 
@@ -356,6 +359,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 				if err != nil {
 					return err
 				}
+				// TODO: add to results?
 			}
 
 			if err = netlink.LinkSetUp(link); err != nil {
