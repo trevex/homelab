@@ -208,7 +208,7 @@ func createVeth(n *NetConf, ifName string, netns ns.NetNS, br *netlink.Bridge) (
 	}
 
 	// Need to lookup hostVeth again as its index has changed during ns move
-	hostVeth, err := netlink.LinkByName(ifName)
+	hostVeth, err := netlink.LinkByName(hostIfName)
 	if err != nil {
 		return hostIfName, contIfName, fmt.Errorf("failed to lookup %q: %v", ifName, err)
 	}

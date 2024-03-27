@@ -27,7 +27,7 @@ node-iso $hostname $disk $k3s_role: coreos-iso
     export K3S_ROLE=${k3s_role}
     export K3S_TOKEN="changethistoanythingbutthis"
     export SSH_AUTHORIZED_KEY=$(ssh-agent sh -c 'ssh-add -q; ssh-add -L' | head -n 1)
-    export K3S_EXTRA_FLAGS=""
+    export K3S_EXTRA_FLAGS="--flannel-backend=none --disable-network-policy --disable servicelb --disable traefik"
 
     if [ $K3S_ROLE == "agent" ]; then
         export K3S_EXTRA_FLAGS="-server ${k3s_server_ip}"
@@ -66,7 +66,25 @@ kubeconfig:
 k *args:
     @KUBECONFIG=`pwd`/.build/kubeconfig kubectl {{args}}
 
-install: (k "apply -k bgp-evpn") (k "apply -k multus-cni") (k "apply -k vxlan-cni")
+cilium:
+    @KUBECONFIG=`pwd`/.build/kubeconfig helm upgrade --install --repo https://helm.cilium.io/ cilium cilium \
+        --version v1.15.3 \
+        --create-namespace \
+        --namespace kube-system \
+        --set operator.replicas=1 \
+        --set ipam.operator.clusterPoolIPv4PodCIDRList=10.42.0.0/16 \
+        --set ipv4NativeRoutingCIDR=10.42.0.0/16 \
+        --set ipv4.enabled=true \
+        --set loadBalancer.mode=dsr \
+        --set kubeProxyReplacement=strict \
+        --set routingMode=native \
+        --set autoDirectNodeRoutes=true \
+        --set hubble.relay.enabled=false \
+        --set hubble.ui.enabled=false \
+        --set l2announcements.enabled=true \
+        --set cni.exclusive=false # we want to use multus
+
+install: cilium (k "apply -k bgp-evpn") (k "apply -k multus-cni") (k "apply -k vxlan-cni")
 
 uninstall: (k "delete -k bgp-evpn") (k "delete -k multus-cni") (k "delete -k vxlan-cni")
 

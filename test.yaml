@@ -9,7 +9,7 @@ spec:
   "vni": 300,
   "ipam": {
     "type": "whereabouts",
-    "range": "17.16.32.0/24"
+    "range": "172.16.32.0/24"
   }
 }'
 ---
@@ -18,7 +18,7 @@ kind: Pod
 metadata:
   name: vxlan-a
   annotations:
-    k8s.v1.cni.cncf.io/networks: default/vxlan-a
+    k8s.v1.cni.cncf.io/networks: vxlan-a
 spec:
   containers:
   - name: test
@@ -39,7 +39,7 @@ spec:
   "vni": 300,
   "ipam": {
     "type": "whereabouts",
-    "range": "17.16.32.0/24"
+    "range": "172.16.32.0/24"
   }
 }'
 ---
@@ -48,7 +48,7 @@ kind: Pod
 metadata:
   name: vxlan-b
   annotations:
-    k8s.v1.cni.cncf.io/networks: default/vxlan-b
+    k8s.v1.cni.cncf.io/networks: vxlan-b
 spec:
   containers:
   - name: test

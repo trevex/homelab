@@ -3,29 +3,11 @@ kind: Kustomization
 
 namespace: kube-system
 
-resources:
-  # multus (patch for k3s below)
+resources: # no patches required as we are using cilium
+  # multus
   # - https://github.com/k8snetworkplumbingwg/multus-cni/raw/v4.0.2/deployments/multus-daemonset-thick.yml
   - https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/a373a2286d3f74d2b0ba05f2592c2820f0087053/deployments/multus-daemonset-thick.yml
-  # whereabouts (patch for k3s below)
+  # whereabouts
   - https://github.com/k8snetworkplumbingwg/whereabouts/raw/v0.6.3/doc/crds/whereabouts.cni.cncf.io_overlappingrangeipreservations.yaml
   - https://github.com/k8snetworkplumbingwg/whereabouts/raw/v0.6.3/doc/crds/whereabouts.cni.cncf.io_ippools.yaml
   - https://github.com/k8snetworkplumbingwg/whereabouts/raw/v0.6.3/doc/crds/daemonset-install.yaml
-
-patches:
-  - path: multus-patch.yaml
-    target:
-      kind: DaemonSet
-      name: kube-multus-ds
-      namespace: kube-system
-  - path: multus-config.yaml
-    target:
-      kind: ConfigMap
-      name: multus-daemon-config
-      namespace: kube-system
-  - path: whereabouts-patch.yaml
-    target:
-      kind: DaemonSet
-      name: whereabouts
-      namespace: kube-system
-
