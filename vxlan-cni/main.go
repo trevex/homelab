@@ -44,9 +44,10 @@ func LockVNI(vni int) (Lockfile, error) {
 
 type NetConf struct {
 	types.NetConf
-	VNI  int `json:"vni"`
-	MTU  int `json:"mtu"`
-	Port int `json:"port"`
+	VNI  int    `json:"vni"`
+	MTU  int    `json:"mtu"`
+	Port int    `json:"port"`
+	Addr string `json:"addr"`
 }
 
 func loadNetConf(bytes []byte) (*NetConf, error) {
@@ -344,6 +345,17 @@ func cmdAdd(args *skel.CmdArgs) error {
 			link, err := netlink.LinkByName(contIfName)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve link: %v", err)
+			}
+
+			if n.Addr != "" {
+				addr, err := netlink.ParseAddr(n.Addr)
+				if err != nil {
+					return err
+				}
+				err = netlink.AddrAdd(link, addr)
+				if err != nil {
+					return err
+				}
 			}
 
 			if err = netlink.LinkSetUp(link); err != nil {
