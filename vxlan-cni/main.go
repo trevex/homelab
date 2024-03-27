@@ -333,21 +333,21 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 		// Configure the container hardware address and IP address(es)
 		if err := netns.Do(func(_ ns.NetNS) error {
-			_, _ = sysctl.Sysctl(fmt.Sprintf("net/ipv6/conf/%s/accept_dad", args.IfName), "0")
-			_, _ = sysctl.Sysctl(fmt.Sprintf("net/ipv4/conf/%s/arp_notify", args.IfName), "1")
-			return ipam.ConfigureIface(args.IfName, result)
+			_, _ = sysctl.Sysctl(fmt.Sprintf("net/ipv6/conf/%s/accept_dad", contIfName), "0")
+			_, _ = sysctl.Sysctl(fmt.Sprintf("net/ipv4/conf/%s/arp_notify", contIfName), "1")
+			return ipam.ConfigureIface(contIfName, result)
 		}); err != nil {
 			return err
 		}
 	} else { // ipam.Configure will set link to up, if ipam not used, we have to manually do it
 		if err := netns.Do(func(_ ns.NetNS) error {
-			link, err := netlink.LinkByName(args.IfName)
+			link, err := netlink.LinkByName(contIfName)
 			if err != nil {
 				return fmt.Errorf("failed to retrieve link: %v", err)
 			}
 
 			if err = netlink.LinkSetUp(link); err != nil {
-				return fmt.Errorf("failed to set %q up: %v", args.IfName, err)
+				return fmt.Errorf("failed to set %q up: %v", contIfName, err)
 			}
 			return nil
 		}); err != nil {
