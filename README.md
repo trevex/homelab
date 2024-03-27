@@ -124,3 +124,19 @@ just vxlan-test-setup
 just vxlan-test
 just vxlan-test-clean
 ```
+
+### K8s with Multus
+
+```bash
+# install test pods with network attachements
+k apply -f test.yaml
+# check if status field is properly set
+k describe po vxlan-a 
+# on one host
+k exec -it vxlan-a -- sh
+ping6 ${IP_B}%net1
+nc -6 -l -p 3000
+# on the other
+k exec -it vxlan-b -- sh
+nc -6 ${IP_A}%net1 300 # followed by input
+```
