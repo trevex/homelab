@@ -138,5 +138,5 @@ ping6 ${IP_B}%net1
 nc -6 -l -p 3000
 # on the other
 k exec -it vxlan-b -- sh
-nc -6 ${IP_A}%net1 300 # followed by input
+nc -6 ${IP_A}%net1 3000 # followed by input
 ```
