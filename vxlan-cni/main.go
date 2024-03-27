@@ -359,7 +359,10 @@ func cmdAdd(args *skel.CmdArgs) error {
 				if err != nil {
 					return err
 				}
-				// TODO: add to results?
+				result.IPs = append(result.IPs, &current.IPConfig{
+					Interface: current.Int(2),
+					Address:   *addr.IPNet,
+				})
 			}
 
 			if err = netlink.LinkSetUp(link); err != nil {
